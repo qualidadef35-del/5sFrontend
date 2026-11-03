@@ -10,21 +10,24 @@ export default function HistoricalCycle({api,notify}) {
   const [catalog,setCatalog]=useState(null),[sources,setSources]=useState([]),[source,setSource]=useState('');
   const [open,setOpen]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(true);
   const [reload,setReload]=useState(0),[importing,setImporting]=useState(false);
+  const [updateResult,setUpdateResult]=useState(null);
   useEffect(()=>{let alive=true;setLoading(true);setError('');
     Promise.all([api('/admin/history/catalog'),api('/admin/history/sources')]).then(([c,s])=>{
       if(!alive)return;setCatalog(c);setSources(s);setSource(old=>s.some(x=>x.source_id===old)?old:(s[0]?.source_id||''));
     }).catch(e=>{if(alive)setError(e.message)}).finally(()=>{if(alive)setLoading(false)});
     return()=>{alive=false};
   },[api,reload]);
-  async function importData(){setImporting(true);try{const result=await api('/admin/history/import',{method:'POST'});notify(`Histórico disponível: ${result.imported+result.existing} registros; ${result.sectorsAdded} setores adicionados.`);setReload(n=>n+1)}catch(e){setError(e.message)}finally{setImporting(false)}}
+  async function importData(){if(importing)return;setImporting(true);setUpdateResult(null);setError('');try{const result=await api('/admin/history/import',{method:'POST'});setUpdateResult(result);notify('Dados atualizados com sucesso');setReload(n=>n+1)}catch(e){setError(e.message);notify(e.message,'error')}finally{setImporting(false)}}
   return <section className="panel historical-cycle">
     <div className="panel-heading"><div><h2><History size={19}/> Histórico da planilha 5S</h2><p>Consulte as sinalizações, visitas e planos de ação anteriores na área de ciclos.</p></div>
-      <button className="btn secondary" onClick={()=>setReload(n=>n+1)} disabled={loading}><RefreshCcw size={16}/> Atualizar</button></div>
+      <div className="actions"><button className="btn secondary" onClick={()=>setReload(n=>n+1)} disabled={loading||importing}><RefreshCcw size={16}/> Recarregar</button><button className="btn primary" onClick={importData} disabled={loading||importing} aria-busy={importing}><RefreshCcw size={16} className={importing?'spin':''}/>{importing?'Atualizando dados...':'Atualizar dados'}</button></div></div>
+    <p className="history-message small-muted">Atualiza histórico, setores e responsáveis usando a carga da planilha incluída na versão publicada do sistema. As correções manuais dos responsáveis são preservadas.</p>
+    {updateResult&&<div className="history-message" role="status"><strong>Atualização concluída.</strong> {updateResult.imported} pendências novas, {updateResult.existing} já existentes e {updateResult.sectorsAdded} setores novos. {updateResult.sectorsMapped} setores vinculados.{updateResult.directoryIssues>0&&` ${updateResult.directoryIssues} referência(s) de responsável precisam de conferência.`}</div>}
     {loading?<Loading/>:error?<div className="history-message"><p role="alert">{error}</p><p>O backend precisa estar atualizado e com as migrações aplicadas para consultar o histórico.</p></div>:<>
       {!sources.length?<div className="history-message"><p>O histórico ainda não foi carregado neste banco.</p><button className="btn primary" onClick={importData} disabled={importing}>{importing?'Importando...':'Importar histórico e setores'}</button></div>:<>
         <div className="history-source-bar"><div><strong>{sources.reduce((n,s)=>n+s.record_count,0).toLocaleString('pt-BR')} pendências preservadas</strong><p className="small-muted">As notas dos ciclos atuais permanecem separadas dos registros antigos.</p></div><button className="btn primary" onClick={()=>setOpen(v=>!v)}><History size={16}/>{open?'Recolher histórico':'Consultar histórico'}</button></div>
         {catalog?.issues?.length>0&&<details className="history-issues"><summary>{catalog.issues.length} referência de responsável precisa de conferência</summary>{catalog.issues.map(i=><p key={`${i.source_id}:${i.source_row}`}>Linha {i.source_row}: “{i.original_row[2]}” — responsável registrado: {i.original_row[4]||'não informado'}. O vínculo com o setor não foi confirmado.</p>)}</details>}
-        {open&&<><div className="history-source-picker"><Field label="Origem do histórico"><select value={source} onChange={e=>setSource(e.target.value)}>{sources.map(s=><option key={s.source_id} value={s.source_id}>Planilha 5S • captura {dtBR(s.captured_at)} • {s.record_count} registros</option>)}</select></Field></div><HistoryRecords key={source} api={api} notify={notify} source={source} catalog={catalog}/></>}
+        {open&&<><div className="history-source-picker"><Field label="Origem do histórico"><select value={source} onChange={e=>setSource(e.target.value)}>{sources.map(s=><option key={s.source_id} value={s.source_id}>Planilha 5S • captura {dtBR(s.captured_at)} • {s.record_count} registros</option>)}</select></Field></div><HistoryRecords key={`${source}:${reload}`} api={api} notify={notify} source={source} catalog={catalog}/></>}
       </>}
     </>}
   </section>;
