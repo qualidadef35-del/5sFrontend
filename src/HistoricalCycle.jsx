@@ -6,9 +6,9 @@ import {dtBR} from './helpers';
 const labels={NAO_INICIADO:'Não iniciado',EM_ANDAMENTO:'Em andamento',CONCLUIDO:'Concluído',ATRASADO:'Atrasado',NAO_INFORMADO:'Não informado',OUTRO:'Outro'};
 const statusPill=value=><span className={`pill ${value==='CONCLUIDO'?'ok':value==='ATRASADO'?'danger':'neutral'}`}>{labels[value]||value}</span>;
 
-export default function HistoricalCycle({api,notify}) {
-  const [catalog,setCatalog]=useState(null),[sources,setSources]=useState([]),[source,setSource]=useState('');
-  const [open,setOpen]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+export default function HistoricalCycle({api,notify,initialSource='',initialStage='',initialOpen=false,viewOnly=false}) {
+  const [catalog,setCatalog]=useState(null),[sources,setSources]=useState([]),[source,setSource]=useState(initialSource);
+  const [open,setOpen]=useState(initialOpen),[error,setError]=useState(''),[loading,setLoading]=useState(true);
   const [reload,setReload]=useState(0),[importing,setImporting]=useState(false);
   const [updateResult,setUpdateResult]=useState(null);
   useEffect(()=>{let alive=true;setLoading(true);setError('');
@@ -20,21 +20,21 @@ export default function HistoricalCycle({api,notify}) {
   async function importData(){if(importing)return;setImporting(true);setUpdateResult(null);setError('');try{const result=await api('/admin/history/import',{method:'POST'});setUpdateResult(result);notify('Dados atualizados com sucesso');setReload(n=>n+1)}catch(e){setError(e.message);notify(e.message,'error')}finally{setImporting(false)}}
   return <section className="panel historical-cycle">
     <div className="panel-heading"><div><h2><History size={19}/> Histórico da planilha 5S</h2><p>Consulte as sinalizações, visitas e planos de ação anteriores na área de ciclos.</p></div>
-      <div className="actions"><button className="btn secondary" onClick={()=>setReload(n=>n+1)} disabled={loading||importing}><RefreshCcw size={16}/> Recarregar</button><button className="btn primary" onClick={importData} disabled={loading||importing} aria-busy={importing}><RefreshCcw size={16} className={importing?'spin':''}/>{importing?'Atualizando dados...':'Atualizar dados'}</button></div></div>
-    <p className="history-message small-muted">Atualiza histórico, setores e responsáveis usando a carga da planilha incluída na versão publicada do sistema. As correções manuais dos responsáveis são preservadas.</p>
+      <div className="actions"><button className="btn secondary" onClick={()=>setReload(n=>n+1)} disabled={loading||importing}><RefreshCcw size={16}/> Recarregar</button>{!viewOnly&&<button className="btn primary" onClick={importData} disabled={loading||importing} aria-busy={importing}><RefreshCcw size={16} className={importing?'spin':''}/>{importing?'Atualizando dados...':'Atualizar dados'}</button>}</div></div>
+    <p className="history-message small-muted">Histórico encerrado, disponível para consulta. Os textos originais e os acompanhamentos existentes estão preservados.</p>
     {updateResult&&<div className="history-message" role="status"><strong>Atualização concluída.</strong> {updateResult.imported} pendências novas, {updateResult.existing} já existentes e {updateResult.sectorsAdded} setores novos. {updateResult.sectorsMapped} setores vinculados.{updateResult.directoryIssues>0&&` ${updateResult.directoryIssues} referência(s) de responsável precisam de conferência.`}</div>}
     {loading?<Loading/>:error?<div className="history-message"><p role="alert">{error}</p><p>O backend precisa estar atualizado e com as migrações aplicadas para consultar o histórico.</p></div>:<>
       {!sources.length?<div className="history-message"><p>O histórico ainda não foi carregado neste banco.</p><button className="btn primary" onClick={importData} disabled={importing}>{importing?'Importando...':'Importar histórico e setores'}</button></div>:<>
         <div className="history-source-bar"><div><strong>{sources.reduce((n,s)=>n+s.record_count,0).toLocaleString('pt-BR')} pendências preservadas</strong><p className="small-muted">As notas dos ciclos atuais permanecem separadas dos registros antigos.</p></div><button className="btn primary" onClick={()=>setOpen(v=>!v)}><History size={16}/>{open?'Recolher histórico':'Consultar histórico'}</button></div>
         {catalog?.issues?.length>0&&<details className="history-issues"><summary>{catalog.issues.length} referência de responsável precisa de conferência</summary>{catalog.issues.map(i=><p key={`${i.source_id}:${i.source_row}`}>Linha {i.source_row}: “{i.original_row[2]}” — responsável registrado: {i.original_row[4]||'não informado'}. O vínculo com o setor não foi confirmado.</p>)}</details>}
-        {open&&<><div className="history-source-picker"><Field label="Origem do histórico"><select value={source} onChange={e=>setSource(e.target.value)}>{sources.map(s=><option key={s.source_id} value={s.source_id}>Planilha 5S • captura {dtBR(s.captured_at)} • {s.record_count} registros</option>)}</select></Field></div><HistoryRecords key={`${source}:${reload}`} api={api} notify={notify} source={source} catalog={catalog}/></>}
+        {open&&<><div className="history-source-picker"><Field label="Origem do histórico"><select value={source} onChange={e=>setSource(e.target.value)}>{sources.map(s=><option key={s.source_id} value={s.source_id}>Planilha 5S • captura {dtBR(s.captured_at)} • {s.record_count} registros</option>)}</select></Field></div><HistoryRecords initialStage={initialStage} key={`${source}:${reload}`} api={api} notify={notify} source={source} catalog={catalog}/></>}
       </>}
     </>}
   </section>;
 }
 
-function HistoryRecords({api,notify,source,catalog}) {
-  const [sector,setSector]=useState(''),[stage,setStage]=useState(''),[status,setStatus]=useState(''),[search,setSearch]=useState('');
+function HistoryRecords({api,notify,source,catalog,initialStage=''}) {
+  const [sector,setSector]=useState(''),[stage,setStage]=useState(initialStage),[status,setStatus]=useState(''),[search,setSearch]=useState('');
   const [query,setQuery]=useState(''),[offset,setOffset]=useState(0),[data,setData]=useState({total:0,records:[]}),[busy,setBusy]=useState(true),[error,setError]=useState(''),[selected,setSelected]=useState(null),[reload,setReload]=useState(0);
   useEffect(()=>{const timer=setTimeout(()=>{setQuery(search);setOffset(0)},300);return()=>clearTimeout(timer)},[search]);
   useEffect(()=>{let alive=true;setBusy(true);setError('');
@@ -65,19 +65,19 @@ function HistoryRecords({api,notify,source,catalog}) {
 function HistoryDetail({id,api,notify,onClose,onSaved}) {
   const [record,setRecord]=useState(null),[error,setError]=useState(''),[form,setForm]=useState({}),[saving,setSaving]=useState(false);
   useEffect(()=>{let alive=true;api(`/admin/history/${id}`).then(r=>{if(alive){setRecord(r);setForm({action:r.action,status:r.status,evidence:r.evidence,note:''})}}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[id,api]);
-  async function save(e){e.preventDefault();setSaving(true);try{const r=await api(`/admin/history/${id}`,{method:'PATCH',body:{...form,version:record.version}});const detail=await api(`/admin/history/${id}`);setRecord(detail);setForm({action:r.action,status:r.status,evidence:r.evidence,note:''});notify('Acompanhamento salvo no histórico');onSaved()}catch(e){notify(e.message,'error')}finally{setSaving(false)}}
+  
   return <Modal title="Histórico da pendência" width="920px" onClose={onClose}>
     {error?<p role="alert">{error}</p>:!record?<Loading/>:<>
       <h3>{record.registered_sector_name||record.sector_name}</h3><p>{record.responsible_name||'Responsável não confirmado'} • {record.stage||'Etapa não informada'}</p>
       <div className="history-description">{record.description}</div>
       <div className="history-dates"><span><strong>Início original:</strong> {record.starts_on_original||'Não informado'}</span><span><strong>Término original:</strong> {record.due_on_original||'Não informado'}</span></div>
       <p className="small-muted">Origem: aba {record.sheet_name}, linha {record.source_row}. As datas são exibidas como foram preenchidas.</p>
-      <form className="stack" onSubmit={save}>
-        <Field label="Plano de ação"><textarea rows={4} maxLength={20000} value={form.action} onChange={e=>setForm({...form,action:e.target.value})}/></Field>
-        <Field label="Status"><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Field>
-        <Field label="Evidência de implantação"><textarea rows={3} maxLength={20000} value={form.evidence} onChange={e=>setForm({...form,evidence:e.target.value})}/></Field>
-        <Field label="Nota deste acompanhamento"><textarea rows={2} maxLength={20000} value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/></Field>
-        <div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Fechar</button><button className="btn primary" disabled={saving}>{saving?'Salvando...':'Salvar acompanhamento'}</button></div>
+      <div className="info-banner">Histórico encerrado: somente consulta.</div><form className="stack" onSubmit={e=>e.preventDefault()}>
+        <Field label="Plano de ação"><textarea readOnly rows={4} maxLength={20000} value={form.action} onChange={e=>setForm({...form,action:e.target.value})}/></Field>
+        <Field label="Status"><select disabled value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Field>
+        <Field label="Evidência de implantação"><textarea readOnly rows={3} maxLength={20000} value={form.evidence} onChange={e=>setForm({...form,evidence:e.target.value})}/></Field>
+        
+        <div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Fechar</button></div>
       </form>
       <details className="history-original"><summary>Consultar registro original da planilha</summary><p><strong>Plano original:</strong> {record.original_row[4]||'Não informado'}</p><p><strong>Status original:</strong> {record.status_original||'Não informado'}</p><p><strong>Evidência original:</strong> {record.original_row[8]||'Não informada'}</p></details>
       <h3 className="history-followups">Acompanhamentos registrados ({record.updates.length})</h3>
