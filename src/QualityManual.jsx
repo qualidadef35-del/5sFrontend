@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Field, Heading } from './components';
 import { downloadBlob } from './helpers';
+import TopQuality from './TopQuality';
 
 const filename = 'Manual-Qualidade-Holistica-Edicao-28.pdf';
 
@@ -98,5 +99,6 @@ export default function QualityManual({ api, notify }) {
         </>}
       </div>
     </section>
+    <TopQuality api={api} />
   </>;
 }

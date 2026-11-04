@@ -21,3 +21,16 @@
 .prior-history{margin:20px 0}.prior-history h2{display:flex;align-items:center;gap:8px}.prior-criterion{margin:12px 0;padding:12px 14px;border:1px solid #e8c877;border-radius:8px;background:#fff9ea}.prior-criterion summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:700}.prior-finding{padding:12px 0;border-bottom:1px solid #e4e9ee;font-size:12px;overflow-wrap:anywhere}.prior-finding p{margin:6px 0;white-space:pre-wrap}.prior-legacy{padding:18px 22px}.prior-legacy summary{cursor:pointer;font-weight:700;margin-bottom:12px}.heading-actions{flex-wrap:wrap}
 
 .latest-cycle-result{display:flex;gap:28px;align-items:center;justify-content:space-between;padding:22px;margin-bottom:20px;flex-wrap:wrap}.latest-cycle-result h2{margin:8px 0}.latest-cycle-result p{font-size:12px;color:#61798e;margin:0;max-width:540px}.latest-cycle-score{display:flex;flex-direction:column;gap:6px}.latest-cycle-score span{font-size:12px;color:#61798e}.latest-cycle-score strong{font-size:27px;color:#167eaa}@media(max-width:600px){.latest-cycle-result{gap:18px}.latest-cycle-result>div:first-child{width:100%}.latest-cycle-score strong{font-size:23px}}
+/* Conferência dos dois ciclos Top Quality (Manual edição 28). */
+.top-quality-panel { margin-top: 24px; }
+.top-quality-body { padding: 0 20px 24px; }
+.top-quality-body p { line-height: 1.6; }
+.top-quality-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.top-quality-cycles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 20px; }
+.top-quality-cycle { border: 1px solid #e1e8f0; border-radius: 12px; padding: 16px; min-width: 0; }
+.top-quality-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.top-quality-cycle h4 { margin: 24px 0 12px; }
+.top-quality-cycle .field { margin-bottom: 12px; }
+.top-quality-result { margin-top: 24px; border-top: 1px solid #e1e8f0; padding-top: 16px; }
+@media (max-width: 1000px) { .top-quality-cycles { grid-template-columns: 1fr; } }
+@media (max-width: 540px) { .top-quality-grid { grid-template-columns: 1fr; } }
